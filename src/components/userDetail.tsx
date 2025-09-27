@@ -1,5 +1,17 @@
 import React from "react";
 import Modal from "./Modal";
+import {
+  Mail,
+  Phone,
+  User,
+  MapPin,
+  Calendar,
+  ShieldCheck,
+  CheckCircle,
+  XCircle,
+  Award,
+  Link,
+} from "lucide-react";
 
 type User = {
   profilePic: string;
@@ -56,74 +68,123 @@ export default function UserDetailModal({
     });
 
   const DetailItem = ({
+    icon: Icon,
     label,
     value,
   }: {
+    icon: React.ElementType;
     label: string;
     value: string | number;
   }) => (
-    <div className="flex justify-between border-b py-1 text-sm">
+    <div className="flex items-center gap-2 text-sm border-b py-2">
+      <Icon className="w-4 h-4 text-gray-500" />
       <span className="font-medium text-gray-600">{label}:</span>
-      <span className="text-gray-800">{value}</span>
+      <span className="ml-auto text-gray-800">{value}</span>
     </div>
   );
 
+  const StatusBadge = ({ status }: { status: string }) => {
+    const colors =
+      status === "active"
+        ? "bg-green-100 text-green-700"
+        : status === "completed"
+        ? "bg-blue-100 text-blue-700"
+        : "bg-red-100 text-red-700";
+
+    return (
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-semibold ${colors}`}
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </span>
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-<div className="max-h-[80vh] overflow-y-auto px-2">
-        {" "}
-        <h2 className="text-2xl font-bold mb-6 text-center">User Detail</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="max-h-[85vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white z-10 border-b flex justify-between items-center px-4 py-3">
+          <h2 className="text-xl font-bold">👤 User Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-800 transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
           {/* Left Column - User Info */}
-          <div>
+          <div className="bg-white shadow rounded-xl p-4">
             <div className="flex flex-col items-center mb-4">
               <img
                 src={user.profilePic}
                 alt={user.fullName}
-                className="w-24 h-24 rounded-full object-cover shadow-md mb-2"
+                className="w-28 h-28 rounded-full object-cover shadow-md mb-2"
               />
               <h3 className="text-lg font-semibold">{user.fullName}</h3>
               <p className="text-sm text-gray-500">{user.role}</p>
             </div>
 
             <div className="space-y-1">
-              <DetailItem label="Email" value={user.email} />
-              <DetailItem label="Phone" value={user.phone} />
-              <DetailItem label="Address" value={user.address} />
-              <DetailItem label="Date of Birth" value={user.dob ?? "-"} />
-              <DetailItem label="Gender" value={user.gender ?? "-"} />
-              <DetailItem label="Status" value={user.status ?? "-"} />
+              <DetailItem icon={Mail} label="Email" value={user.email} />
+              <DetailItem icon={Phone} label="Phone" value={user.phone} />
+              <DetailItem
+                icon={Calendar}
+                label="Date of Birth"
+                value={user.dob ?? "-"}
+              />
+              <DetailItem
+                icon={User}
+                label="Gender"
+                value={user.gender ?? "-"}
+              />
+              <DetailItem
+                label="Status"
+                value={user.status ?? "-"}
+                icon={ShieldCheck}
+              />
               <DetailItem
                 label="Membership"
                 value={user.membershipTier ?? "-"}
+                icon={Award}
               />
               <DetailItem
                 label="Created At"
                 value={formatDate(user.createdAt)}
+                icon={Calendar}
               />
               <DetailItem
                 label="Updated At"
                 value={formatDate(user.updatedAt)}
+                icon={Calendar}
               />
               <DetailItem
                 label="Last Login"
                 value={user.lastLogin ? formatDate(user.lastLogin) : "-"}
+                icon={Calendar}
               />
               <DetailItem
                 label="Total Spent"
-                value={`$${user.totalSpent?.toFixed(2) ?? "0.00"}`}
+                value={`₹${user.totalSpent?.toFixed(2) ?? "0.00"}`}
+                icon={CheckCircle}
               />
               <DetailItem
                 label="Referral Code"
                 value={user.referralCode ?? "-"}
+                icon={Link}
               />
               <DetailItem
                 label="Email Verified"
                 value={user.isEmailVerified ? "Yes" : "No"}
+                icon={user.isEmailVerified ? CheckCircle : XCircle}
               />
               <DetailItem
                 label="Phone Verified"
                 value={user.isPhoneVerified ? "Yes" : "No"}
+                icon={user.isPhoneVerified ? CheckCircle : XCircle}
               />
             </div>
 
@@ -145,7 +206,7 @@ export default function UserDetailModal({
                       href={user.socialLinks.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 hover:underline text-sm"
                     >
                       LinkedIn
                     </a>
@@ -155,7 +216,7 @@ export default function UserDetailModal({
                       href={user.socialLinks.twitter}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sky-500 hover:underline"
+                      className="text-sky-500 hover:underline text-sm"
                     >
                       Twitter
                     </a>
@@ -165,7 +226,7 @@ export default function UserDetailModal({
                       href={user.socialLinks.facebook}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-700 hover:underline"
+                      className="text-blue-700 hover:underline text-sm"
                     >
                       Facebook
                     </a>
@@ -176,8 +237,10 @@ export default function UserDetailModal({
           </div>
 
           {/* Right Column - Courses */}
-          <div className="md:col-span-2">
-            <h3 className="text-xl font-semibold mb-3">Purchased Courses</h3>
+          <div className="md:col-span-2 bg-white shadow rounded-xl p-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              📚 Purchased Courses
+            </h3>
 
             {courses.length === 0 ? (
               <p className="text-gray-500 text-sm">
@@ -188,35 +251,25 @@ export default function UserDetailModal({
                 {courses.map((course) => (
                   <li
                     key={course.id}
-                    className="border rounded-lg p-4 shadow-sm flex flex-col md:flex-row md:justify-between"
+                    className="border rounded-lg p-4 shadow-sm hover:shadow-md transition flex flex-col md:flex-row md:justify-between"
                   >
                     <div>
-                      <h4 className="font-semibold text-base">
-                        {course.title}
+                      <h4 className="font-semibold text-base flex items-center gap-2">
+                        {course.title} <StatusBadge status={course.status} />
                       </h4>
                       <p className="text-sm text-gray-500">
                         Purchased: {formatDate(course.purchaseDate)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Price: ${course.price.toFixed(2)}
-                      </p>
-                      <p className="text-sm">
-                        Status:{" "}
-                        <span
-                          className={`font-semibold ${
-                            course.status === "active"
-                              ? "text-green-600"
-                              : course.status === "completed"
-                              ? "text-blue-600"
-                              : "text-red-500"
-                          }`}
-                        >
-                          {course.status.charAt(0).toUpperCase() +
-                            course.status.slice(1)}
-                        </span>
+                        Price: ₹ {course.price.toFixed(2)}
                       </p>
                       {course.progress !== undefined && (
-                        <p className="text-sm">Progress: {course.progress}%</p>
+                        <div className="mt-1 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${course.progress}%` }}
+                          ></div>
+                        </div>
                       )}
                     </div>
 
@@ -227,7 +280,7 @@ export default function UserDetailModal({
                             `Navigate to course details for ${course.title}`
                           )
                         }
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
                       >
                         View Course
                       </button>
@@ -237,9 +290,9 @@ export default function UserDetailModal({
                             href={course.certificateUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-center"
+                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm text-center"
                           >
-                            Download Certificate
+                            🎓 Certificate
                           </a>
                         )}
                     </div>
