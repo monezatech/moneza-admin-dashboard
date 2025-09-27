@@ -35,29 +35,23 @@ export default function Courses() {
   const [userCounts, setUserCounts] = useState<{ [courseId: string]: number }>(
     {}
   );
-  const [user, setUser] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [editCourse, setEditCourse] = useState<any>(null);
-  const [addLectureCourse, setAddLectureCourse] = useState<any>(null);
   const [page, setPage] = useState(1);
-  const [detailsCourse, setDetailsCourse] = useState<any>(null);
-  const [editLecture, setEditLecture] = useState<any>(null);
-  const [token, setToken] = useState<any>("")
   const router = useRouter();
+
   const perPage = 10;
   const userRole = "admin";
 
-  useEffect(() => {
-    setToken(localStorage.getItem("token"))
-  }, []);
-
   const getLoggedUser = async () => {
+    const token = localStorage.getItem("token");
     try {
       setLoading(true);
       const res = await apiService.getLoggedUser({ token });
       setUser(res.user);
-      getCourses(token);
+      if (token) {
+        getCourses(token);
+      }
     } catch (error) {
       console.log("User fetch error:", error);
       setLoading(false);
@@ -69,7 +63,7 @@ export default function Courses() {
       setLoading(true);
       const res = await apiService.getCourses({ token });
       setCourses(res.courses);
-      await fetchAllUserCounts(res.courses);
+      await fetchAllUserCounts();
     } catch (error) {
       console.error("Error fetching courses", error);
     } finally {
@@ -77,7 +71,7 @@ export default function Courses() {
     }
   };
 
-  const fetchAllUserCounts = async (courseList: Course[]) => {
+  const fetchAllUserCounts = async () => {
     const token = await localStorage.getItem("token");
     try {
       const res = await apiService.getAllUserCountsPerCourse(token);
@@ -173,7 +167,9 @@ export default function Courses() {
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <button
-                          onClick={() => setDetailsCourse(course)}
+                          onClick={() => {
+                            /* Implement view details */
+                          }}
                           className="bg-gray-100 p-2 rounded-full hover:bg-blue-100"
                           title="View Details"
                         >
@@ -182,7 +178,9 @@ export default function Courses() {
                         {userRole === "admin" && (
                           <>
                             <button
-                              onClick={() => setEditCourse(course)}
+                              onClick={() => {
+                                /* Implement edit course */
+                              }}
                               className="bg-gray-100 p-2 rounded-full hover:bg-yellow-100"
                               title="Edit Course"
                             >
@@ -196,7 +194,9 @@ export default function Courses() {
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </button>
                             <button
-                              onClick={() => setAddLectureCourse(course)}
+                              onClick={() => {
+                                /* Implement add lecture */
+                              }}
                               className="bg-gray-100 p-2 rounded-full hover:bg-green-100"
                               title="Add Lecture"
                             >

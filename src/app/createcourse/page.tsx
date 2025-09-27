@@ -1,12 +1,12 @@
 "use client";
 
 import { useForm, useFieldArray } from "react-hook-form";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import SearchableSelect from "../../components/searchableDropdown";
 import ProgressBar from "../../components/ProgressBar";
+import { apiService } from "../../service/service";
 
 const courseSchema = yup.object().shape({
   title: yup.string().required("Title is required"),
@@ -17,13 +17,7 @@ const courseSchema = yup.object().shape({
     .number()
     .typeError("Price must be a number")
     .required("Price is required"),
-  thumbnail: yup
-    .mixed()
-    .test(
-      "required",
-      "Thumbnail is required",
-      (value) => value && value.length > 0
-    ),
+  thumbnail: yup.mixed().nullable(), // ✅ optional now
   lessons: yup
     .array()
     .of(
@@ -33,39 +27,48 @@ const courseSchema = yup.object().shape({
         duration: yup.string().required("Duration is required"),
         video: yup
           .mixed()
-          .test(
-            "required",
-            "Video is required",
-            (value) => value && value.length > 0
-          ),
+          .test("required", "Video is required", (value) => {
+            return value instanceof FileList && value.length > 0;
+          }),
       })
     )
     .min(1, "At least one lesson is required"),
 });
+
+interface Category {
+  _id: string;
+  name: string;
+}
+
+interface Instructor {
+  _id: string;
+  name: string;
+}
 
 export default function CreateCoursePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [instructors, setInstructors] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
-    async function fetchData() {
+    (async () => {
       try {
-        const [catRes, instRes] = await Promise.all([
-          axios.get("http://localhost:8000/api/course/categories"),
-          axios.get("http://localhost:8000/api/instructors"),
-        ]);
-        setCategories(catRes.data);
-        setInstructors(instRes.data);
+        const categoriesRes = await apiService.getCategories();
+        setCategories(categoriesRes?.categories || []);
+
+        const instructorsRes = await apiService.getInstructors();
+        setInstructors(instructorsRes?.instructor || []);
       } catch (err) {
-        console.error("Failed to load categories or instructors", err);
+        console.error("❌ Failed to fetch data:", err);
       }
-    }
-    fetchData();
-  }, []);
+    })();
+  }, [token]);
 
   const {
     register,
@@ -81,9 +84,9 @@ export default function CreateCoursePage() {
       description: "",
       categoryId: "",
       instructorId: "",
-      price: "",
-      thumbnail: null,
-      lessons: [{ title: "", content: "", duration: "", video: null }],
+      price: 0,
+      thumbnail: undefined,
+      lessons: [{ title: "", content: "", duration: "", video: undefined }],
     },
   });
 
@@ -92,52 +95,55 @@ export default function CreateCoursePage() {
     name: "lessons",
   });
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: yup.InferType<typeof courseSchema>) => {
     try {
       setIsSubmitting(true);
-      const formData = new FormData();
+      setMessage("");
 
+      const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description);
       formData.append("categoryId", data.categoryId);
       formData.append("instructorId", data.instructorId);
-      formData.append("price", data.price);
-      formData.append("thumbnail", data.thumbnail[0]);
+      formData.append("price", String(data.price));
 
-      // Prepare lessons metadata without video
-      const lessonsToSend = data.lessons.map((lesson: any) => ({
-        title: lesson.title,
-        content: lesson.content,
-        duration: lesson.duration,
-      }));
-      formData.append("lessons", JSON.stringify(lessonsToSend));
+      // ✅ optional thumbnail
+      if (data.thumbnail && (data.thumbnail as FileList).length > 0) {
+        formData.append("thumbnail", (data.thumbnail as FileList)[0]);
+      }
 
-      // Append videos (one per lesson)
-      data.lessons.forEach((lesson: any, index: number) => {
-        if (lesson.video && lesson.video.length > 0) {
-          formData.append("videos", lesson.video[0]); // "videos[]" if your backend expects array
-        }
+      // ✅ lessons metadata
+      if (data.lessons) {
+        const lessonsMeta = data.lessons.map((lesson, index) => ({
+          title: lesson.title,
+          content: lesson.content,
+          duration: lesson.duration,
+          index: index, // to match with video
+        }));
+        formData.append("lessons", JSON.stringify(lessonsMeta));
+
+        // ✅ lesson videos
+        data.lessons.forEach((lesson) => {
+          if (lesson.video && (lesson.video as FileList).length > 0) {
+            formData.append("videos", (lesson.video as FileList)[0]);
+          }
+        });
+      }
+
+      await apiService.createCourse({
+        token,
+        formData, // ✅ use `formData` not `data`
+        onUploadProgress: (event: ProgressEvent) => {
+          const percent = Math.round((event.loaded * 100) / (event.total || 1));
+          setUploadProgress(percent);
+        },
       });
-
-      await axios.post(
-        "http://localhost:8000/api/course/create-course",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: (event) => {
-            const percent = Math.round(
-              (event.loaded * 100) / (event.total || 1)
-            );
-            setUploadProgress(percent);
-          },
-        }
-      );
 
       setMessage("✅ Course created successfully!");
       setUploadProgress(0);
       setThumbnailPreview(null);
     } catch (error) {
-      console.error(error);
+      console.error("❌ Failed to create course:", error);
       setMessage("❌ Failed to create course");
     } finally {
       setIsSubmitting(false);
@@ -158,72 +164,54 @@ export default function CreateCoursePage() {
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-6 bg-white p-6 rounded shadow"
       >
+        {/* Title */}
         <div>
           <label className="block font-medium">Title</label>
           <input {...register("title")} className="input" />
           <p className="error">{errors.title?.message}</p>
         </div>
 
+        {/* Description */}
         <div>
           <label className="block font-medium">Description</label>
           <textarea {...register("description")} className="input" />
           <p className="error">{errors.description?.message}</p>
         </div>
 
-        {/* Thumbnail Upload */}
+        {/* Thumbnail */}
         <div>
-          <label className="block font-medium mb-1">Thumbnail</label>
-          <div className="flex items-center gap-4">
-            <input
-              type="file"
-              accept="image/*"
-              {...register("thumbnail")}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setThumbnailPreview(URL.createObjectURL(file));
-              }}
-              className="hidden"
-              id="thumbnailInput"
-            />
-            <label
-              htmlFor="thumbnailInput"
-              className="cursor-pointer bg-gray-200 px-4 py-2 rounded hover:bg-gray-300 transition"
-            >
-              Upload Image
-            </label>
-            {thumbnailPreview && (
-              <img
-                src={thumbnailPreview}
-                alt="Preview"
-                className="w-24 h-24 object-cover rounded border"
-              />
-            )}
-          </div>
-          <p className="error">{errors.thumbnail?.message}</p>
+          <label className="block font-medium mb-1">Thumbnail (optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            {...register("thumbnail")}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setThumbnailPreview(URL.createObjectURL(file));
+                setValue("thumbnail", [file], { shouldValidate: true });
+              }
+            }}
+          />
+          {thumbnailPreview && (
+            <img src={thumbnailPreview} className="w-24 h-24 mt-2 rounded" />
+          )}
         </div>
 
-        {/* Category & Instructor */}
+        {/* Category, Instructor, Price */}
         <div className="grid grid-cols-2 gap-4">
           <SearchableSelect
             label="Category"
-            options={categories.map((cat) => ({
-              label: cat.name,
-              value: cat._id,
-            }))}
+            options={categories.map((c) => ({ label: c.name, value: c._id }))}
             value={watch("categoryId")}
             onChange={(val) => setValue("categoryId", val)}
           />
-
           <SearchableSelect
             label="Instructor"
-            options={instructors.map((inst) => ({
-              label: inst.name,
-              value: inst._id,
-            }))}
+            options={instructors.map((i) => ({ label: i.name, value: i._id }))}
             value={watch("instructorId")}
             onChange={(val) => setValue("instructorId", val)}
           />
-
           <div>
             <label className="block font-medium">Price</label>
             <input type="number" {...register("price")} className="input" />
@@ -231,7 +219,7 @@ export default function CreateCoursePage() {
           </div>
         </div>
 
-        {/* Lessons Section */}
+        {/* Lessons */}
         <div className="border-t pt-4">
           <h3 className="text-lg font-semibold">Lessons</h3>
           {fields.map((field, index) => (
@@ -270,7 +258,6 @@ export default function CreateCoursePage() {
                 type="file"
                 accept="video/*"
                 {...register(`lessons.${index}.video`)}
-                className="input"
               />
               <p className="error">
                 {errors?.lessons?.[index]?.video?.message}
@@ -285,11 +272,10 @@ export default function CreateCoursePage() {
               </button>
             </div>
           ))}
-
           <button
             type="button"
             onClick={() =>
-              append({ title: "", content: "", duration: "", video: null })
+              append({ title: "", content: "", duration: "", video: undefined })
             }
             className="mt-2 text-blue-600 underline"
           >
@@ -309,7 +295,7 @@ export default function CreateCoursePage() {
         </button>
       </form>
 
-      <style jsx>{`
+      <style>{`
         .input {
           width: 100%;
           border: 1px solid #ccc;

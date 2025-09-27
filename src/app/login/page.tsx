@@ -26,9 +26,10 @@ export default function LoginPage() {
     onSubmit: async (values, { setSubmitting }) => {
       try {
         const response = await apiService.loginUser(values);
+        console.log("repsonse", response)
 
         if (response?.token) {
-          localStorage.setItem("token", response.token);
+          localStorage.setItem("token", response?.token);
           router.push("/");
         } else {
           alert("Login failed: Invalid credentials");

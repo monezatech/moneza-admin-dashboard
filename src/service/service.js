@@ -1,7 +1,7 @@
-
 import apiCall from "./api";
 
 export const apiService = {
+  // ===================== User APIs =====================
   registerUser: (data) =>
     apiCall("/api/user/register", { method: "POST", data }),
 
@@ -10,103 +10,73 @@ export const apiService = {
   changePassword: (data) =>
     apiCall("/api/user/changepassword", { method: "POST", data }),
 
-  getLoggedUser: async ({ token }) => {
-    try {
-      const response = await apiCall("/api/user/loggeduser", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  getLoggedUser: ({ token }) =>
+    apiCall("/api/user/loggeduser", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-      return response;
-    } catch (error) {
-      console.error("Error fetching logged user:", error);
-      throw error;
-    }
-  },
+  getUsers: ({ token }) =>
+    apiCall("/api/user/get-all-users", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-  getCourses: async ({ token }) => {
-    try {
-      const response = await apiCall("/api/course/courses", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  deleteUser: ({ token }) =>
+    apiCall("/api/user/delete", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-      return response;
-    } catch (error) {
-      console.error("Error fetching courses:", error, token);
-      throw error;
-    }
-  },
+  // ===================== Course APIs =====================
+  getCourses: ({ token }) =>
+    apiCall("/api/course/courses", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-  getLessonById: async ({ token, refCourse }) => {
-    try {
-      const response = await apiCall(`/api/course/getlesson/${refCourse}`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  getLessonById: ({ token, refCourse }) =>
+    apiCall(`/api/course/getlesson/${refCourse}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-      return response;
-    } catch (error) {
-      console.error("Error fetching lesson:", error);
-      throw error;
-    }
-  },
+  getAllUserCountsPerCourse: (courseId, token) =>
+    apiCall(`/api/course/${courseId}/user-count`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 
-  createOrder: async ({ token, courseId }) => {
-    try {
-      const response = await apiCall("/payment/create-order", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          courseId,
-        }),
-      });
-
-      return response;
-    } catch (error) {
-      console.error("Error creating order:", error);
-      throw error;
-    }
-  },
-
-  getUsers: async ({ token }) => {
-    try {
-      const response = await apiCall("/api/user/get-all-users", {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      return response;
-    } catch (error) {
-      console.error("Error fetching users:", error, token);
-      throw error;
-    }
-  },
-
-  getPurchasedCoursesByUser: async (userId, token) => {
-    const res = await fetch(`/api/purchases/user/${userId}`, {
+  createCourse: ({ token, formData, onUploadProgress }) =>
+    apiCall("/api/course/create-course", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
-    return await res.json(); // Contains: purchasedCourses[]
-  },
+      data: formData,
+      onUploadProgress,
+    }),
 
-  getAllUserCountsPerCourse: async (courseId, token) => {
-    console.log("-=-=-=-=-=-=-=-=-=-", courseId);
-    try {
-      const response = await apiCall(`/api/course/${courseId}/user-count`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  // ===================== Category & Instructor APIs =====================
+  getCategories: () => apiCall("/api/course/categories", { method: "GET" }),
 
-      return response;
-    } catch (error) {
-      console.error("Error fetching users:", error, token);
-      throw error;
-    }
-  },
+  getInstructors: () => apiCall("/api/course/instructors", { method: "GET" }),
+
+  // ===================== Payment APIs =====================
+  createOrder: ({ token, courseId }) =>
+    apiCall("/payment/create-order", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ courseId }),
+    }),
+
+  // ===================== Purchases =====================
+  getPurchasedCoursesByUser: (userId, token) =>
+    apiCall(`/api/purchases/user/${userId}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
 };

@@ -7,40 +7,40 @@ import { Eye } from "lucide-react";
 import UserDetailModal from "../../components/userDetail";
 import { apiService } from "../../service/service";
 
-export interface Address {
-  street?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-}
+type User = {
+  _id: string;
+  profilePic: string;
+  name: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+  dob?: string;
+  gender?: string;
+  status?: string;
+  membershipTier?: string;
+  socialLinks?: { linkedin?: string; twitter?: string; facebook?: string };
+  lastLogin?: string;
+  totalSpent?: number;
+  referralCode?: string;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  bio?: string;
+  purchasedCourseIds: string[];
+};
 
-export interface Course {
+type Course = {
   id: string;
   title: string;
-  // Add other course fields if needed
-}
-
-export interface User {
-  _id?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: Address;
-  dob?: Date;
-  isActive?: boolean;
-  tc: boolean;
-  role: "admin" | "user";
-  referralCode?: string;
-  referredBy?: string | null;
-  wallet?: number;
-  fcmToken?: string | null;
-  resetPasswordToken?: string;
-  resetPasswordExpire?: Date;
-  isVerified?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  purchasedCourseIds: string[];
-}
+  purchaseDate: string;
+  price: number;
+  status: "active" | "completed" | "expired";
+  progress?: number;
+  certificateUrl?: string;
+};
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -127,7 +127,13 @@ export default function Users() {
 
       <Toaster position="top-right" />
 
-      <div className="flex justify-between items-center gap-4">
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-600 border-opacity-50"></div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-between items-center gap-4">
         <input
           type="text"
           placeholder="Search by name or email..."
@@ -250,6 +256,8 @@ export default function Users() {
           courses={purchasedCoursesForDetailsUser}
         />
       )}
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 }
