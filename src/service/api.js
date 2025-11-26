@@ -1,8 +1,9 @@
 import axios from "axios";
 
 // const BASE_URL = "http://172.20.10.5:8000"; // mobile
-// const BASE_URL = "http://192.168.1.50:8000";
+// const BASE_URL = "http://10.30.164.119:8000";
 const BASE_URL = "https://moneza-backend.onrender.com";
+
 
 const apiCall = async (endpoint, options = {}) => {
   const {
@@ -20,17 +21,18 @@ const apiCall = async (endpoint, options = {}) => {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  if (!(data instanceof FormData)) {
+  if (!(data instanceof FormData) && method !== 'DELETE') {
     apiHeaders["Content-Type"] = "application/json";
   }
 
   try {
+    const timeout = data instanceof FormData ? 300000 : 10000; // 5 minutes for uploads, 10 seconds for others
     const response = await axios({
       url: `${BASE_URL}${endpoint}`,
       method,
       data,
       params,
-      timeout: 10000,
+      timeout,
       headers: apiHeaders,
       onUploadProgress,
     });
