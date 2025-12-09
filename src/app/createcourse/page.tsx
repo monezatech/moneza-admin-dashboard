@@ -17,7 +17,7 @@ const courseSchema = yup.object().shape({
     .number()
     .typeError("Price must be a number")
     .required("Price is required"),
-  thumbnail: yup.mixed().nullable(), // ✅ optional now
+  thumbnail: yup.mixed().nullable(), // optional
   lessons: yup
     .array()
     .of(
@@ -25,11 +25,15 @@ const courseSchema = yup.object().shape({
         title: yup.string().required("Lesson title is required"),
         content: yup.string().required("Lesson content is required"),
         duration: yup.string().required("Duration is required"),
-        video: yup
-          .mixed()
-          .test("required", "Video is required", (value) => {
-            return value instanceof FileList && value.length > 0;
-          }),
+        videoFile: yup.mixed().nullable(),
+        videoLink: yup.string().nullable(),
+      }).test("either_video", "Either video file or video link is required", function(value) {
+        const hasFile = value.videoFile && (value.videoFile instanceof FileList) && value.videoFile.length > 0;
+        const hasLink = Boolean(value.videoLink && value.videoLink.trim().length > 0);
+        if (! (hasFile || hasLink)) {
+          return this.createError({ message: "Either video file or video link is required" });
+        }
+        return true;
       })
     )
     .min(1, "At least one lesson is required"),
@@ -48,6 +52,8 @@ interface Instructor {
 export default function CreateCoursePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedBytes, setUploadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
   const [message, setMessage] = useState("");
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,7 +92,7 @@ export default function CreateCoursePage() {
       instructorId: "",
       price: 0,
       thumbnail: undefined,
-      lessons: [{ title: "", content: "", duration: "", video: undefined }],
+      lessons: [{ title: "", content: "", duration: "", videoFile: undefined, videoLink: "" }],
     },
   });
 
@@ -99,6 +105,9 @@ export default function CreateCoursePage() {
     try {
       setIsSubmitting(true);
       setMessage("");
+      setUploadProgress(0);
+      setUploadedBytes(0);
+      setTotalBytes(0);
 
       const formData = new FormData();
       formData.append("title", data.title);
@@ -107,40 +116,48 @@ export default function CreateCoursePage() {
       formData.append("instructorId", data.instructorId);
       formData.append("price", String(data.price));
 
-      // ✅ optional thumbnail
+      // optional thumbnail
       if (data.thumbnail && (data.thumbnail as FileList).length > 0) {
         formData.append("thumbnail", (data.thumbnail as FileList)[0]);
       }
 
-      // ✅ lessons metadata
+      // lessons metadata + videos
       if (data.lessons) {
         const lessonsMeta = data.lessons.map((lesson, index) => ({
           title: lesson.title,
           content: lesson.content,
           duration: lesson.duration,
+          videoLink: lesson.videoLink || "",
           index: index, // to match with video
         }));
         formData.append("lessons", JSON.stringify(lessonsMeta));
 
-        // ✅ lesson videos
         data.lessons.forEach((lesson) => {
-          if (lesson.video && (lesson.video as FileList).length > 0) {
-            formData.append("videos", (lesson.video as FileList)[0]);
+          if (lesson.videoFile && (lesson.videoFile as FileList).length > 0) {
+            formData.append("videos", (lesson.videoFile as FileList)[0]);
           }
         });
       }
 
       await apiService.createCourse({
         token,
-        formData, // ✅ use `formData` not `data`
+        formData,
         onUploadProgress: (event: ProgressEvent) => {
-          const percent = Math.round((event.loaded * 100) / (event.total || 1));
+          const total = event.total || 0;
+          const loaded = event.loaded;
+
+          const percent = Math.round((loaded * 100) / (total || 1));
+
           setUploadProgress(percent);
+          setUploadedBytes(loaded);
+          setTotalBytes(total);
         },
       });
 
       setMessage("✅ Course created successfully!");
       setUploadProgress(0);
+      setUploadedBytes(0);
+      setTotalBytes(0);
       setThumbnailPreview(null);
     } catch (error) {
       console.error("❌ Failed to create course:", error);
@@ -149,6 +166,8 @@ export default function CreateCoursePage() {
       setIsSubmitting(false);
     }
   };
+
+  const formatMB = (bytes: number) => (bytes / 1024 / 1024).toFixed(2); // MB with 2 decimals
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -254,13 +273,26 @@ export default function CreateCoursePage() {
                 {errors?.lessons?.[index]?.duration?.message}
               </p>
 
+              <label className="block font-medium">Video File (optional)</label>
               <input
                 type="file"
                 accept="video/*"
-                {...register(`lessons.${index}.video`)}
+                {...register(`lessons.${index}.videoFile`)}
               />
+
+              <label className="block font-medium">Video Link (optional)</label>
+              <input
+                type="url"
+                {...register(`lessons.${index}.videoLink`)}
+                placeholder="e.g. https://example.com/video"
+                className="input"
+              />
+
               <p className="error">
-                {errors?.lessons?.[index]?.video?.message}
+                {(() => {
+                  const lessonError = errors.lessons?.[index];
+                  return lessonError && typeof lessonError === 'object' && 'message' in lessonError ? (lessonError as { message: string }).message : null;
+                })()}
               </p>
 
               <button
@@ -275,7 +307,7 @@ export default function CreateCoursePage() {
           <button
             type="button"
             onClick={() =>
-              append({ title: "", content: "", duration: "", video: undefined })
+              append({ title: "", content: "", duration: "", videoFile: undefined, videoLink: "" })
             }
             className="mt-2 text-blue-600 underline"
           >
@@ -284,7 +316,21 @@ export default function CreateCoursePage() {
         </div>
 
         {/* Upload Progress */}
-        {isSubmitting && <ProgressBar percent={uploadProgress} />}
+        {isSubmitting && (
+          <div className="mt-4">
+            <ProgressBar percent={uploadProgress} />
+            <p className="text-sm text-gray-600 mt-1">
+              {totalBytes > 0 ? (
+                <>
+                  {formatMB(uploadedBytes)} MB / {formatMB(totalBytes)} MB
+                  uploaded ({uploadProgress}%)
+                </>
+              ) : (
+                "Preparing upload..."
+              )}
+            </p>
+          </div>
+        )}
 
         <button
           type="submit"

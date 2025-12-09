@@ -50,11 +50,34 @@ export const apiService = {
   createCourse: ({ token, formData, onUploadProgress }) =>
     apiCall("/api/course/create-course", {
       method: "POST",
+      data: formData,
+      headers: {
+        // Let axios set the multipart boundary for FormData
+        "Content-Type": "multipart/form-data",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      // Make sure this specific request can handle large bodies too
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      onUploadProgress,
+    }),
+
+  updateCourse: ({ courseId, token, formData, onUploadProgress }) =>
+    apiCall(`/api/course/course/${courseId}`, {
+      method: "PUT",
       headers: {
         Authorization: `Bearer ${token}`,
       },
       data: formData,
       onUploadProgress,
+    }),
+
+  deleteCourse: ({ courseId, token }) =>
+    apiCall(`/api/course/course/${courseId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }),
 
   // ===================== Category & Instructor APIs =====================
@@ -73,10 +96,20 @@ export const apiService = {
       body: JSON.stringify({ courseId }),
     }),
 
-  // ===================== Purchases =====================
-  getPurchasedCoursesByUser: (userId, token) =>
-    apiCall(`/api/purchases/user/${userId}`, {
+  getCourseById: ({ courseId, token }) =>
+    apiCall(`/api/course/course/${courseId}`, {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }),
+
+  createLesson: ({ token, formData }) =>
+    apiCall("/api/course/lessons", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      data: formData,
     }),
 };

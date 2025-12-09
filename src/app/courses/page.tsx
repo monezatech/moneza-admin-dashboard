@@ -97,11 +97,30 @@ export default function Courses() {
     page * perPage
   );
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this course?")) {
-      setCourses(courses.filter((c) => c._id !== id));
-      toast.success("Course deleted");
+      try {
+        const token = localStorage.getItem("token");
+        await apiService.deleteCourse({ courseId: id, token });
+        setCourses(courses.filter((c) => c._id !== id));
+        toast.success("Course deleted successfully");
+      } catch (error) {
+        console.error("Error deleting course", error);
+        toast.error("Failed to delete course");
+      }
     }
+  };
+
+  const handleView = (id: string) => {
+    router.push(`/courses/${id}`);
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/editcourse/${id}`);
+  };
+
+  const handleAddLecture = (id: string) => {
+    router.push(`/addlecture/${id}`);
   };
 
   useEffect(() => {
@@ -167,9 +186,7 @@ export default function Courses() {
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <button
-                          onClick={() => {
-                            /* Implement view details */
-                          }}
+                          onClick={() => handleView(course._id)}
                           className="bg-gray-100 p-2 rounded-full hover:bg-blue-100"
                           title="View Details"
                         >
@@ -178,9 +195,7 @@ export default function Courses() {
                         {userRole === "admin" && (
                           <>
                             <button
-                              onClick={() => {
-                                /* Implement edit course */
-                              }}
+                              onClick={() => handleEdit(course._id)}
                               className="bg-gray-100 p-2 rounded-full hover:bg-yellow-100"
                               title="Edit Course"
                             >
@@ -194,9 +209,7 @@ export default function Courses() {
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </button>
                             <button
-                              onClick={() => {
-                                /* Implement add lecture */
-                              }}
+                              onClick={() => handleAddLecture(course._id)}
                               className="bg-gray-100 p-2 rounded-full hover:bg-green-100"
                               title="Add Lecture"
                             >
